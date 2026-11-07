@@ -59,10 +59,28 @@ def calcular_estado_capacitor(C, V_cap):
     U = 0.5*C*(V_cap * V_cap)
     return Q, U
 
+## For loop para que recorra la lista R_comparar 
+# Actividades 2,3,4
+
+for i in R_comparar:
+    capacitancia = calcular_capacitancia_esfera(i)
+    potencial = calcular_potencial_superficie(Q, i)
+    campo = calcular_campo_superficie(Q,i)
+    energia = calcular_energia_esfera(capacitancia, potencial)
+    print(f"La Capacitancia es: {capacitancia}\nEl potencial de la esfera es: {potencial}\nEl campo electrico fuera de su superficie es: {campo}\nLa energia electrostactica es: {energia} \n")
+
+voltaje_fijo = calcular_potencial_superficie(Q, R_inicial)
+
+## Bucle para la actividad 7
+for i in R_comparar:
+    capacitancia = calcular_capacitancia_esfera(i)
+    nueva_Carga = capacitancia * voltaje_fijo
+    campo = calcular_campo_superficie(nueva_Carga,i)
+    energia = calcular_energia_esfera(capacitancia, voltaje_fijo)
+    print(f"La Capacitancia es: {capacitancia}\nEl potencial de la esfera es: {voltaje_fijo}\nEl campo electrico fuera de su superficie es: {campo}\nLa energia electrostactica es: {energia} \n")
 
 
-prueba = calcular_capacitancia_esfera(R_inicial)
-print(prueba)
+
 
 
 
