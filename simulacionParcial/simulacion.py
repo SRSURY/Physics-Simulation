@@ -1,4 +1,3 @@
-import math
 import numpy as np 
 import matplotlib.pyplot as plt 
 
@@ -80,12 +79,104 @@ for i in R_comparar:
     print(f"La Capacitancia es: {capacitancia}\nEl potencial de la esfera es: {voltaje_fijo}\nEl campo electrico fuera de su superficie es: {campo}\nLa energia electrostactica es: {energia} \n")
 
 
+## Actividad 8
+
+trabajo_W, cambio_U = calcular_trabajo_traslado(q0, R_inicial, R_inicial*2, Q)
+print(f"El trabajo de mover una carga de prueba desde R = 0.05m a 2R = 0.10m es: {trabajo_W:.3}")
+print(f"El cambio de energía potencial es: {cambio_U:.3}")
+
+## Actividad 5 Graficar V(r) y E(r)
+
+r_vector = np.linspace(0.01, 0.20, 500)
+
+perfilPotencial = perfil_potencial(r_vector, R_inicial, Q)
+perfilCampo = perfil_campo(r_vector, R_inicial, Q)
+
+## Perfil del Potencial Eléctrico V(r)
+
+plt.figure(figsize=(8, 4))
+# Argumentos de plt.plot: (Eje X en cm, Eje Y en Voltios, Estilo/Color, Etiqueta)
+plt.plot(r_vector * 100, perfilPotencial, color='blue', linewidth=2, label='V(r)')
+plt.axvline(x=R_inicial * 100, color='red', linestyle='--', label=f'Superficie R = {R_inicial*100:.0f} cm')
+
+plt.title('Perfil de Potencial Eléctrico V(r) - Esfera Conductora')
+plt.xlabel('Distancia radial r (cm)')
+plt.ylabel('Potencial V (Voltios)')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.savefig('grafica_potencial_V.png', dpi=300)
+plt.show()
+
+
+## Perfil del Campo Eléctrico E(r)
+
+plt.figure(figsize=(8, 4))
+# Argumentos de plt.plot: (Eje X en cm, Eje Y en kV/m [dividido entre 1000], Estilo/Color, Etiqueta)
+
+plt.plot(r_vector * 100, perfilCampo / 1000, color='green', linewidth=2, label='E(r)')
+plt.axvline(x=R_inicial * 100, color='red', linestyle='--', label=f'Superficie R = {R_inicial*100:.0f} cm')
+
+plt.title('Perfil de Campo Eléctrico E(r) - Esfera Conductora')
+plt.xlabel('Distancia radial r (cm)')
+plt.ylabel('Campo Eléctrico E (kV/m)')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.savefig('grafica_campo_E.png', dpi=300)
+plt.show()
+
+
+## Actividad 9 Superficies equipotenciales
+
+# 1. Definir el plano espacial (de -20 cm a 20 cm en X e Y)
+x = np.linspace(-0.20, 0.20, 400)
+y = np.linspace(-0.20, 0.20, 400)
+X, Y = np.meshgrid(x, y) # Crea la cuadrícula bidimensional
+
+# 2. Calcular la distancia r al centro (0,0) para cada punto de la cuadrícula
+r_plano = np.hypot(X, Y)
+
+# 3. Calcular el voltaje en todo el plano usando tu función
+# (perfil_potencial mantendrá el voltaje constante si r <= R_inicial)
+V_plano = perfil_potencial(r_plano, R_inicial, Q)
+
+# 4. Generar la gráfica
+plt.figure(figsize=(7, 7))
+
+# Dibuja las líneas equipotenciales (15 niveles de voltaje distintos)
+contornos = plt.contour(X * 100, Y * 100, V_plano, levels=15, cmap='plasma')
+plt.clabel(contornos, inline=True, fontsize=9, fmt='%.0f V') # Etiqueta los voltajes en las líneas
+
+# Dibuja la esfera conductora sólida en el centro para dar contexto
+esfera = plt.Circle((0, 0), R_inicial * 100, color='silver', ec='black', zorder=10, label='Esfera Conductora')
+plt.gca().add_patch(esfera)
+
+plt.title('Superficies Equipotenciales - Esfera Conductora (Vista 2D)')
+plt.xlabel('Posición en X (cm)')
+plt.ylabel('Posición en Y (cm)')
+plt.axhline(0, color='black', linewidth=0.5, linestyle='--')
+plt.axvline(0, color='black', linewidth=0.5, linestyle='--')
+plt.grid(True, linestyle=':', alpha=0.7)
+plt.legend(loc='upper right')
+plt.axis('equal') # Fuerza a que los ejes X e Y tengan la misma escala para que los círculos no se vean ovalados
+plt.tight_layout()
+plt.savefig('superficies_equipotenciales.png', dpi=300)
+plt.show()
 
 
 
 
 
+## Actividades 10, 11 
 
+capacitancia_capacitor = capacitancia_capacitor_esferico(R_inicial, R_externo, 1)
+estado_capacitorCarga, estado_capacitorEnergia = calcular_estado_capacitor(capacitancia_capacitor, v_cap)
+print(f"La nueva capacitancia es: {capacitancia_capacitor}, la nueva carga es: {estado_capacitorCarga} y la nueva energia es: {estado_capacitorEnergia}")
 
-
+## Actividad 12 
+print("\nCambiamos el dielectrico a 2 para analizar el efecto que hace: ")
+capacitancia_capacitor2 = capacitancia_capacitor_esferico(R_inicial, R_externo, kappa)
+estado_capacitorCarga2, estado_capacitorEnergia2 = calcular_estado_capacitor(capacitancia_capacitor2, v_cap)
+print(f"La nueva capacitancia es: {capacitancia_capacitor2}, la nueva carga es: {estado_capacitorCarga2} y la nueva energia es: {estado_capacitorEnergia2}")
 
