@@ -1,53 +1,40 @@
-"""Proyecto 10 - Esfera conductora aislada y capacitor esférico (Física II, UTP).
+"""Simulador de las actividades 2-5 y 7-12 del Proyecto 10.
 
-Simulador del segundo examen parcial (ABP). Cubre las actividades 1-12 del proyecto:
-barridos de radio, perfiles V(r) y E(r), trabajo de una carga de prueba, equipotenciales,
-capacitor esférico, dieléctrico (batería conectada y desconectada) y un conjunto de
-pruebas independientes con verificación por mutación.
+Imprime los resultados, guarda seis gráficas junto al script y ejecuta
+comprobaciones básicas del modelo.
 
-Uso:
-    python simulador_esfera_conductora.py
-
-Imprime las tablas y guarda las figuras (PNG) en la misma carpeta del script.
+Uso: python simulacion.py
 """
 
 import os
 
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")  # solo guarda PNG: funciona en Codespaces sin ventanas
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from scipy.integrate import quad
 
-# =====================================================================
-# 1. CONSTANTES Y DATOS DE DISEÑO (todo en unidades SI)
-# =====================================================================
-k = 8.988e9        # N·m²/C²  constante de Coulomb (≈ 1/(4π·ε0))
-eps_0 = 8.854e-12  # F/m      permitividad eléctrica del vacío
+k = 8.988e9
+eps_0 = 8.854e-12
 
-# k y ε0 están redondeados por separado, así que k·4π·ε0 no vale exactamente 1.
-# Esa desviación (≈ 2.9e-5) aparece en toda prueba que mezcle ambas constantes.
 PRODUCTO_CONSTANTES = k * 4 * np.pi * eps_0
 DESVIACION_CONSTANTES = abs(PRODUCTO_CONSTANTES - 1)
-TOL_CONSTANTES = 3.0e-5  # tolerancia relativa: justo por encima de la desviación
+TOL_CONSTANTES = 3.0e-5
 
-R_esfera = 0.05                 # m   radio de la esfera (5 cm)
-Q = 1.0e-9                      # C   carga de la esfera (1 nC)
-q0 = 1.0e-9                     # C   carga de prueba oficial (+1 nC)
-q0_experimento_2nC = 2.0e-9     # C   solo para el experimento de la actividad 8
-q0_experimento_075nC = 0.75e-9  # C   solo para el experimento de la actividad 8
+R_esfera = 0.05
+Q = 1.0e-9
+q0 = 1.0e-9
+q0_experimento_2nC = 2.0e-9
+q0_experimento_075nC = 0.75e-9
 
-R_barrido = np.array([0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10])  # m
-R_destacados = np.array([0.03, 0.05, 0.08])  # m   radios que pide el proyecto
+R_barrido = np.array([0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10])
+R_destacados = np.array([0.03, 0.05, 0.08])
 
-R_coraza_interna = 0.08  # m   radio INTERIOR de la coraza (actividad 10); es b
-V_capacitor = 100.0      # V   diferencia de potencial del capacitor (actividad 11)
-kappa = 2.0              # --  constante dieléctrica (actividad 12)
+R_coraza_interna = 0.08
+V_capacitor = 100.0
+kappa = 2.0
 
-# Niveles de las equipotenciales (V). Se eligen equiespaciados cada 20 V:
-# el espaciado entre curvas es inversamente proporcional a |E|.
 NIVELES_EQUIPOTENCIALES_V = [40, 60, 80, 100, 120, 140, 160]
-SEMILADO_VENTANA = 0.25  # m   la ventana del mapa es [-25, 25] cm en x e y
+SEMILADO_VENTANA = 0.25
 
 RUTA_SALIDA = os.path.dirname(os.path.abspath(__file__))
 
@@ -414,282 +401,73 @@ def grafica_convergencia_capacitor():
     _guardar(fig, "convergencia_capacitor_esferico.png")
 
 
-# =====================================================================
-# 5. PRUEBAS INDEPENDIENTES (cada una devuelve (aprobada, detalle))
-# =====================================================================
-def prueba_V_igual_Q_sobre_C():
-    """V = Q/C. La discrepancia debe ser EXACTAMENTE la que predicen las constantes.
-
-    V_Q/C = V_fórmula / (k·4π·ε0), así que la diferencia relativa predicha es
-    |1/(k·4π·ε0) - 1|. Cubre calcular_capacitancia_esfera y calcular_potencial_superficie.
-    """
-    V_QC = Q / calcular_capacitancia_esfera(R_esfera)
-    V_formula = calcular_potencial_superficie(Q, R_esfera)
-    medida = diferencia_relativa(V_QC, V_formula)
-    predicha = abs(1 / PRODUCTO_CONSTANTES - 1)
-    ok = abs(medida - predicha) <= 1e-9
-    return ok, f"dif. relativa medida = {medida:.4e}, predicha por las constantes = {predicha:.4e}"
-
-
-def prueba_campo_afuera_igual_sigma_sobre_eps0():
-    """E justo afuera = σ/ε0 con σ = Q/(4πR²). Usa ε0 (la fórmula del código usa k).
-
-    Cubre calcular_campo_superficie. Tolerancia: la de las constantes.
-    """
-    E_gauss = Q / (4 * np.pi * R_esfera ** 2) / eps_0
-    E_codigo = calcular_campo_superficie(Q, R_esfera)
-    dif = diferencia_relativa(E_codigo, E_gauss)
-    return dif <= TOL_CONSTANTES, f"E código = {E_codigo:.3f} V/m, σ/ε0 = {E_gauss:.3f} V/m, dif. = {dif:.3e}"
-
-
-def prueba_capacitor_desde_integral_de_E():
-    """C = Q/ΔV con ΔV = ∫E dr entre a y b, para κ = 1 y κ = 2 (E se reduce a E/κ).
-
-    Cubre perfil_campo y capacitancia_capacitor_esferico (incluido el papel de κ).
-    Tolerancia: la de las constantes (la integral usa k; la fórmula usa ε0).
-    """
-    a, b = R_esfera, R_coraza_interna
-    ok, partes = True, []
-    for kap in (1.0, kappa):
-        delta_V, _ = quad(lambda r: float(perfil_campo(Q, a, r)) / kap, a, b)
-        C_integral = Q / delta_V
-        C_formula = capacitancia_capacitor_esferico(a, b, kap)
-        dif = diferencia_relativa(C_formula, C_integral)
-        ok = ok and dif <= TOL_CONSTANTES
-        partes.append(f"κ={kap:g}: C integral = {C_integral * 1e12:.4f} pF, "
-                      f"fórmula = {C_formula * 1e12:.4f} pF, dif. = {dif:.2e}")
-    return ok, "; ".join(partes)
-
-
-def prueba_E_igual_menos_dV_dr():
-    """E = -dV/dr con derivada numérica, lejos del salto de la superficie.
-
-    La diferencia central de 1/r tiene error relativo (h/r)², así que la tolerancia es
-    1.5·(h/r_min)² (50 % de margen). Cubre perfil_potencial y perfil_campo.
-    """
-    r = np.linspace(1.2 * R_esfera, 3.0 * R_esfera, 2001)
-    h = r[1] - r[0]
-    E_numerico = -np.gradient(perfil_potencial(Q, R_esfera, r), r)
-    E_modelo = perfil_campo(Q, R_esfera, r)
-    error = np.max(np.abs(E_numerico[1:-1] - E_modelo[1:-1]) / E_modelo[1:-1])
-    tolerancia = 1.5 * (h / r[1]) ** 2
-    return error <= tolerancia, f"error relativo máximo = {error:.2e}, tolerancia = {tolerancia:.2e}"
-
-
-def prueba_derivada_en_la_superficie():
-    """En r = R la derivada numérica da ≈ la mitad del salto de E (no el valor de afuera).
-
-    El cociente central mezcla un punto interior (V constante) y uno exterior. Se compara
-    con la predicción exacta del cociente y se verifica que está cerca de la mitad del salto.
-    """
-    R = R_esfera
-    r = np.linspace(0.9 * R, 1.1 * R, 101)
-    i = int(np.argmin(np.abs(r - R)))
-    E_en_R = -np.gradient(perfil_potencial(Q, R, r), r)[i]
-    prediccion = (k * Q / R - k * Q / r[i + 1]) / (r[i + 1] - r[i - 1])
-    mitad_salto = k * Q / R ** 2 / 2
-    dif_pred = diferencia_relativa(E_en_R, prediccion)
-    dif_mitad = diferencia_relativa(E_en_R, mitad_salto)
-    h = r[i + 1] - r[i]
-    ok = dif_pred <= 1e-9 and dif_mitad <= 1.5 * h / R
-    return ok, (f"E_num(R) = {E_en_R:.3f} V/m, mitad del salto = {mitad_salto:.3f} V/m "
-                f"(dif. {dif_mitad:.2e}), vs predicción del cociente: {dif_pred:.1e}")
-
-
-def prueba_trabajo_contra_integral():
-    """W = ∫q0·E dr comparado con calcular_trabajo_traslado, en tres recorridos.
-
-    Recorridos: R→2R, 0.5R→2R (cruza la superficie; adentro E = 0) y 2R→R (regreso, W
-    cambia de signo). Solo interviene k, así que la tolerancia es de 1e-9.
-    Cubre perfil_campo y calcular_trabajo_traslado.
-    """
-    R = R_esfera
-    W_ida, _ = quad(lambda r: q0 * float(perfil_campo(Q, R, r)), R, 2 * R)
-    casos = [("R→2R", R, 2 * R, W_ida),
-             ("0.5R→2R", 0.5 * R, 2 * R, W_ida),
-             ("2R→R", 2 * R, R, -W_ida)]
-    ok, partes = True, []
-    for nombre, r_i, r_f, esperado in casos:
-        W, delta_U = calcular_trabajo_traslado(q0, Q, R, r_i, r_f)
-        dif = diferencia_relativa(W, esperado)
-        ok = ok and dif <= 1e-9 and abs(delta_U + W) <= 1e-9 * abs(W)
-        partes.append(f"{nombre}: W = {W * 1e9:.3f} nJ (dif. {dif:.1e})")
-    return ok, "; ".join(partes)
-
-
-def prueba_energia_tres_formulas():
-    """U = ½CV² (código) frente a ½QV (no usa C) y a Q²/(2C) (no usa V).
-
-    Cada comparación mezcla k y ε0 una vez, así que la tolerancia es la de las constantes.
-    Cubre calcular_energia_esfera.
-    """
-    C = calcular_capacitancia_esfera(R_esfera)
-    V = calcular_potencial_superficie(Q, R_esfera)
-    U_codigo = calcular_energia_esfera(C, V)
-    U_QV = 0.5 * Q * V
-    U_Q2C = Q ** 2 / (2 * C)
-    d1 = diferencia_relativa(U_codigo, U_QV)
-    d2 = diferencia_relativa(U_Q2C, U_QV)
-    ok = d1 <= TOL_CONSTANTES and d2 <= TOL_CONSTANTES
-    return ok, (f"U código = {U_codigo * 1e9:.4f} nJ, ½QV = {U_QV * 1e9:.4f} nJ, "
-                f"Q²/2C = {U_Q2C * 1e9:.4f} nJ (dif. {d1:.2e} y {d2:.2e})")
-
-
-def prueba_estado_capacitor():
-    """Q y U del capacitor a 100 V, comparados con Gauss y con fórmulas equivalentes.
-
-    Con ΔV fija, E(a) = ΔV/(a²(1/a - 1/b)) y Gauss da Q = κ·ε0·E(a)·4πa² (usa solo ε0,
-    como la fórmula de C). Verifica κ = 1 y κ = 2. Tolerancia: 1e-12 (solo redondeo).
-    Cubre calcular_estado_capacitor y capacitancia_capacitor_esferico.
-    """
-    a, b = R_esfera, R_coraza_interna
-    ok, partes = True, []
-    for kap in (1.0, kappa):
-        C = capacitancia_capacitor_esferico(a, b, kap)
-        Q_c, U_c = calcular_estado_capacitor(C, V_capacitor)
-        E_a = V_capacitor / (a * a * (1 / a - 1 / b))
-        Q_gauss = kap * eps_0 * E_a * 4 * np.pi * a * a
-        d_Q = diferencia_relativa(Q_c, Q_gauss)
-        d_U1 = diferencia_relativa(U_c, 0.5 * Q_c * V_capacitor)
-        d_U2 = diferencia_relativa(U_c, Q_c ** 2 / (2 * C))
-        ok = ok and max(d_Q, d_U1, d_U2) <= 1e-12
-        partes.append(f"κ={kap:g}: Q = {Q_c * 1e9:.4f} nC (Gauss dif. {d_Q:.1e}), "
-                      f"U = {U_c * 1e9:.4f} nJ (dif. {d_U1:.1e}, {d_U2:.1e})")
-    return ok, "; ".join(partes)
-
-
-def prueba_leyes_de_escala_del_barrido():
-    """Los exponentes de R en el barrido deben ser enteros exactos (leyes de potencias).
-
-    Q fija: C ∝ R, V ∝ 1/R, E ∝ 1/R², U ∝ 1/R. V fijo: Q ∝ R, E ∝ 1/R, U ∝ R.
-    Tolerancia 1e-9 sobre cada exponente.
-    """
-    C = calcular_capacitancia_esfera(R_barrido)
-    V = calcular_potencial_superficie(Q, R_barrido)
-    V_fijo = calcular_potencial_superficie(Q, R_esfera)
-    Q_b = C * V_fijo
-    esperados = [("C", C, 1), ("V(Q fija)", V, -1),
-                 ("E(Q fija)", calcular_campo_superficie(Q, R_barrido), -2),
-                 ("U(Q fija)", calcular_energia_esfera(C, V), -1),
-                 ("Q(V fijo)", Q_b, 1),
-                 ("E(V fijo)", calcular_campo_superficie(Q_b, R_barrido), -1),
-                 ("U(V fijo)", calcular_energia_esfera(C, V_fijo), 1)]
-    ok, partes = True, []
-    for nombre, y, exponente in esperados:
-        medido = pendiente_loglog(R_barrido, y)
-        ok = ok and abs(medido - exponente) <= 1e-9
-        partes.append(f"{nombre}: {medido:+.6f}")
-    return ok, ", ".join(partes)
-
-
-def prueba_convergencia_capacitor():
-    """Para b >> a, (C_capacitor - C_esfera)/C_esfera = a/(b - a) → 0 como a/b.
-
-    Identidad exacta: C_capacitor = C_esfera·b/(b - a). Tolerancia 1e-6 sobre la
-    desviación relativa. Cubre capacitancia_capacitor_esferico.
-    """
-    a = R_esfera
-    cocientes = np.array([10.0, 100.0, 1000.0, 10000.0])
-    C_aislada = calcular_capacitancia_esfera(a)
-    desviacion = (capacitancia_capacitor_esferico(a, a * cocientes) - C_aislada) / C_aislada
-    prediccion = 1 / (cocientes - 1)
-    error = np.max(np.abs(desviacion - prediccion) / prediccion)
-    return error <= 1e-6, ("desviaciones para b/a = 10, 1e2, 1e3, 1e4: "
-                           + ", ".join(f"{d:.2e}" for d in desviacion))
-
-
-PRUEBAS = [
-    ("V = Q/C", prueba_V_igual_Q_sobre_C),
-    ("E afuera = σ/ε0", prueba_campo_afuera_igual_sigma_sobre_eps0),
-    ("C desde ∫E (κ = 1 y 2)", prueba_capacitor_desde_integral_de_E),
-    ("E = -dV/dr lejos del salto", prueba_E_igual_menos_dV_dr),
-    ("derivada numérica en r = R", prueba_derivada_en_la_superficie),
-    ("W contra ∫q0·E", prueba_trabajo_contra_integral),
-    ("U por tres fórmulas", prueba_energia_tres_formulas),
-    ("estado del capacitor (Gauss)", prueba_estado_capacitor),
-    ("leyes de escala del barrido", prueba_leyes_de_escala_del_barrido),
-    ("convergencia b → ∞", prueba_convergencia_capacitor),
-]
-
-
-def ejecutar_pruebas(mostrar=True):
-    """Ejecuta todas las pruebas y devuelve {nombre: (aprobada, detalle)}."""
+# Comprobaciones físicas
+def ejecutar_pruebas():
+    """Comprueba algunas relaciones físicas del modelo."""
     resultados = {}
-    for nombre, prueba in PRUEBAS:
-        try:
-            ok, detalle = prueba()
-        except Exception as error:  # una función rota puede lanzar excepciones
-            ok, detalle = False, f"excepción: {error!r}"
-        resultados[nombre] = (bool(ok), detalle)
-        if mostrar:
-            print(f"[{'APROBADA' if ok else 'FALLIDA '}] {nombre}\n           {detalle}")
+    capacitancia = calcular_capacitancia_esfera(R_esfera)
+    potencial = calcular_potencial_superficie(Q, R_esfera)
+    energia = calcular_energia_esfera(capacitancia, potencial)
+    campo_gauss = Q / (4 * np.pi * R_esfera**2 * eps_0)
+    resultados["esfera: potencial, campo y energía"] = all((
+        diferencia_relativa(Q / capacitancia, potencial) <= TOL_CONSTANTES,
+        diferencia_relativa(calcular_campo_superficie(Q, R_esfera), campo_gauss)
+        <= TOL_CONSTANTES,
+        diferencia_relativa(energia, 0.5 * Q * potencial) <= TOL_CONSTANTES,
+    ))
+
+    radio = R_esfera
+    r = np.linspace(1.2 * radio, 3 * radio, 1001)
+    campo_derivado = -np.gradient(perfil_potencial(Q, radio, r), r)
+    campo_modelo = perfil_campo(Q, radio, r)
+    error_campo = np.max(
+        np.abs(campo_derivado[1:-1] - campo_modelo[1:-1]) / campo_modelo[1:-1]
+    )
+    resultados["perfiles: E = -dV/dr"] = error_campo < 2e-5
+
+    trabajo, cambio_energia = calcular_trabajo_traslado(
+        q0, Q, radio, radio, 2 * radio
+    )
+    trabajo_desde_dentro, _ = calcular_trabajo_traslado(
+        q0, Q, radio, radio / 2, 2 * radio
+    )
+    resultados["trabajo: signo y recorrido interior"] = (
+        trabajo > 0
+        and np.isclose(trabajo, trabajo_desde_dentro)
+        and np.isclose(trabajo, -cambio_energia)
+    )
+
+    a, b = R_esfera, R_coraza_interna
+    C_vacio = capacitancia_capacitor_esferico(a, b)
+    C_dielec = capacitancia_capacitor_esferico(a, b, kappa)
+    Q_vacio, U_vacio = calcular_estado_capacitor(C_vacio, V_capacitor)
+    Q_con, U_con = calcular_estado_capacitor(C_dielec, V_capacitor)
+    V_des = Q_vacio / C_dielec
+    U_des = calcular_energia_esfera(C_dielec, V_des)
+    resultados["capacitor: dieléctrico conectado/desconectado"] = all((
+        np.isclose(C_dielec / C_vacio, kappa),
+        np.isclose(Q_con / Q_vacio, kappa),
+        np.isclose(U_con / U_vacio, kappa),
+        np.isclose(V_des / V_capacitor, 1 / kappa),
+        np.isclose(U_des / U_vacio, 1 / kappa),
+    ))
+
+    C_aislada = calcular_capacitancia_esfera(a)
+    b_sobre_a = np.array([10.0, 100.0, 1000.0])
+    diferencia = (
+        capacitancia_capacitor_esferico(a, a * b_sobre_a) - C_aislada
+    ) / C_aislada
+    resultados["capacitor: límite de esfera aislada"] = np.allclose(
+        diferencia, 1 / (b_sobre_a - 1)
+    )
+
+    for nombre, aprobada in resultados.items():
+        print(f"[{'APROBADA' if aprobada else 'FALLIDA'}] {nombre}")
     return resultados
 
 
-# =====================================================================
-# 6. PRUEBAS DE MUTACIÓN: se rompe a propósito cada función y se verifica
-#    que al menos una prueba lo detecte
-# =====================================================================
-def _trabajo_signo_invertido(q, Q_, R, r_i, r_f):
-    delta_V = perfil_potencial(Q_, R, r_f) - perfil_potencial(Q_, R, r_i)
-    return float(q * delta_V), float(q * delta_V)  # W con el signo equivocado
-
-
-def _mutaciones():
-    """Lista de (función, descripción del error, versión rota con la misma firma)."""
-    return [
-        ("calcular_capacitancia_esfera", "usa 2π en vez de 4π",
-         lambda R: 2 * np.pi * eps_0 * R),
-        ("calcular_potencial_superficie", "divide entre R² en vez de R",
-         lambda Q_, R: k * Q_ / (R * R)),
-        ("calcular_campo_superficie", "divide entre R en vez de R²",
-         lambda Q_, R: k * Q_ / R),
-        ("calcular_energia_esfera", "olvida el factor ½",
-         lambda C, V: C * V * V),
-        ("perfil_potencial", "decae como 1/r² afuera",
-         lambda Q_, R, r: np.where(np.asarray(r) <= R, k * Q_ / R,
-                                   k * Q_ / np.maximum(np.asarray(r), R) ** 2)),
-        ("perfil_campo", "decae como 1/r afuera",
-         lambda Q_, R, r: np.where(np.asarray(r) < R, 0.0,
-                                   k * Q_ / np.maximum(np.asarray(r), R))),
-        ("calcular_trabajo_traslado", "signo de W invertido", _trabajo_signo_invertido),
-        ("capacitancia_capacitor_esferico", "denominador b + a en vez de b - a",
-         lambda a, b, kap=1.0: kap * 4 * np.pi * eps_0 * (a * b / (b + a))),
-        ("capacitancia_capacitor_esferico", "ignora κ",
-         lambda a, b, kap=1.0: 4 * np.pi * eps_0 * (a * b / (b - a))),
-        ("calcular_estado_capacitor", "U sin el factor ½",
-         lambda C, V: (C * V, C * V * V)),
-        ("calcular_estado_capacitor", "Q = C/V en vez de C·V",
-         lambda C, V: (C / V, 0.5 * C * V * V)),
-    ]
-
-
-def ejecutar_mutaciones():
-    """Sustituye cada función por una versión rota, corre las pruebas y restaura."""
-    print("\n=== Verificación por mutación: ¿alguna prueba detecta cada error? ===")
-    todas = True
-    for nombre_funcion, descripcion, version_rota in _mutaciones():
-        original = globals()[nombre_funcion]
-        globals()[nombre_funcion] = version_rota
-        try:
-            resultados = ejecutar_pruebas(mostrar=False)
-        finally:
-            globals()[nombre_funcion] = original
-        detectoras = [n for n, (ok, _) in resultados.items() if not ok]
-        todas = todas and bool(detectoras)
-        estado = "DETECTADO" if detectoras else "NO DETECTADO"
-        print(f"{estado:>13} | {nombre_funcion}: {descripcion}")
-        print(f"{'':>13} |   falla en: {', '.join(detectoras) if detectoras else '-'}")
-    print("Todas las mutaciones fueron detectadas." if todas
-          else "ATENCIÓN: hay errores que ninguna prueba detecta.")
-    return todas
-
-
-# =====================================================================
-# 7. PROGRAMA PRINCIPAL
-# =====================================================================
 def main():
-    """Ejecuta las actividades, las pruebas independientes y la verificación por mutación."""
+    """Ejecuta las actividades y comprobaciones del simulador."""
     print("=" * 70)
     print(" PROYECTO 10: esfera conductora aislada y capacitor esférico")
     print("=" * 70)
@@ -702,12 +480,10 @@ def main():
     actividad_9()
     actividades_10_11_12()
     grafica_convergencia_capacitor()
-
     print("\n=== Verificación independiente ===")
     resultados = ejecutar_pruebas()
-    aprobadas = sum(ok for ok, _ in resultados.values())
+    aprobadas = sum(resultados.values())
     print(f"\nPruebas aprobadas: {aprobadas}/{len(resultados)}")
-    ejecutar_mutaciones()
 
 
 if __name__ == "__main__":

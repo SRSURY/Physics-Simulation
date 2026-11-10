@@ -1,9 +1,8 @@
 # Proyecto 10 – Esfera conductora aislada (Física II, UTP)
 
-Simulador en Python de las 12 actividades del Proyecto 10: barridos de radio, perfiles
-V(r) y E(r), trabajo de una carga de prueba, equipotenciales, capacitor esférico y
-dieléctrico (batería conectada y desconectada), con pruebas independientes y
-verificación por mutación.
+Simulador en Python de las actividades 2-5 y 7-12 del Proyecto 10: barridos de radio,
+perfiles V(r) y E(r), trabajo de una carga de prueba, equipotenciales, capacitor esférico
+y dieléctrico (batería conectada y desconectada), con comprobaciones físicas básicas.
 
 ## Cómo ejecutarlo (GitHub Codespaces)
 
@@ -11,10 +10,10 @@ verificación por mutación.
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python simulador_esfera_conductora.py
+python simulacionParcial/simulacion.py
 ```
 
-El script imprime las tablas y las pruebas, y guarda los PNG en la misma carpeta.
+El script imprime las tablas y las comprobaciones, y guarda los PNG junto al archivo.
 
 ## Archivos que genera
 
