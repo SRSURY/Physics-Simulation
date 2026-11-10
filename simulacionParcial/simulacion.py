@@ -12,30 +12,43 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+## Variables
+k = 8.988e9 # Constante de Coulomb (N·m²/C²).
+eps_0 = 8.854e-12 # Permitividad del vacío (F/m).
 
-k = 8.988e9
-eps_0 = 8.854e-12
+# Se usan para las pruebas de "Verificación Independiente" y la Actividad 8.
+# Validan que k y eps_0 sean coherentes entre sí (k * 4 * pi * eps_0 debe ser aprox 1).
 
 PRODUCTO_CONSTANTES = k * 4 * np.pi * eps_0
 DESVIACION_CONSTANTES = abs(PRODUCTO_CONSTANTES - 1)
 TOL_CONSTANTES = 3.0e-5
 
-R_esfera = 0.05
-Q = 1.0e-9
-q0 = 1.0e-9
-q0_experimento_2nC = 2.0e-9
-q0_experimento_075nC = 0.75e-9
+# actividades 2-9
+R_esfera = 0.05 # Radio fijo de la esfera principal en metros (5 cm).
+Q = 1.0e-9 # Carga fija de la esfera en Coulombs (1 nC).
 
+# Cargas de prueba para medir trabajo y energía (Actividad 8)
+q0 = 1.0e-9                 # Carga de prueba estándar (1 nC).
+q0_experimento_2nC = 2.0e-9 # Carga de prueba modificada (2 nC).
+q0_experimento_075nC = 0.75e-9 # Carga de prueba modificada (0.75 nC).
+
+# Arreglos para barridos de datos (Actividades 2, 3, 4, 5 y 7)
+# Evalúan instantáneamente múltiples radios sin usar ciclos 'for'.
 R_barrido = np.array([0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10])
 R_destacados = np.array([0.03, 0.05, 0.08])
 
-R_coraza_interna = 0.08
-V_capacitor = 100.0
-kappa = 2.0
+ # actividades 10, 11 y 12
+
+R_coraza_interna = 0.08 # Radio interior de la coraza externa (8 cm). 'a' es R_esfera.
+V_capacitor = 100.0 # Voltaje de la batería conectada al capacitor (100 V).
+kappa = 2.0 # Constante dieléctrica del material insertado (kappa o K).
+
+# visualizacion grafica actividad 9
 
 NIVELES_EQUIPOTENCIALES_V = [40, 60, 80, 100, 120, 140, 160]
 SEMILADO_VENTANA = 0.25
 
+ # Detecta automáticamente dónde está guardado el script para dejar las imágenes ahí.
 RUTA_SALIDA = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -65,6 +78,9 @@ def calcular_energia_esfera(C, V):
 def perfil_potencial(Q, R, r):
     """V(r) de una esfera conductora: constante en r <= R y kQ/r en r > R (V)."""
     r = np.asarray(r, dtype=float)
+    # FÍSICA: Dentro de un conductor en equilibrio (r <= R), el campo eléctrico es cero, 
+    # por lo que el potencial es constante e igual al de la superficie (kQ/R).
+    # Fuera del conductor (r > R), se comporta como una carga puntual (kQ/r).
     # np.maximum evita dividir entre cero cuando r = 0 (ahí se usa la rama interior).
     return np.where(r <= R, k * Q / R, k * Q / np.maximum(r, R))
 
@@ -72,6 +88,8 @@ def perfil_potencial(Q, R, r):
 def perfil_campo(Q, R, r):
     """E(r) de una esfera conductora: 0 en r < R y kQ/r² en r >= R (V/m)."""
     r = np.asarray(r, dtype=float)
+    # FÍSICA: Por Ley de Gauss, el campo interno de un conductor sólido es 0.
+    # Afuera, decae con el cuadrado de la distancia (kQ/r^2).
     return np.where(r < R, 0.0, k * Q / np.maximum(r, R) ** 2)
 
 
@@ -85,6 +103,9 @@ def calcular_trabajo_traslado(q0, Q, R, r_i, r_f):
         (W, delta_U) en julios, con W = -q0·ΔV y ΔU = q0·ΔV.
     """
     delta_V = perfil_potencial(Q, R, r_f) - perfil_potencial(Q, R, r_i)
+    # FÍSICA: El trabajo realizado por el campo es W = -q0 * ΔV.
+    # El cambio en la energía potencial del sistema es ΔU = q0 * ΔV.
+    # Si W es positivo, el campo hace el trabajo. Si W es negativo, lo hace un agente externo.
     return float(-q0 * delta_V), float(q0 * delta_V)
 
 
@@ -105,6 +126,10 @@ def calcular_estado_capacitor(C, V):
 # =====================================================================
 def pendiente_loglog(x, y):
     """Exponente n de la ley de potencias y ∝ x^n (pendiente en escala log-log)."""
+    # FÍSICA/MATE: Si una variable depende de otra según y = A*x^n, 
+    # al aplicar logaritmos queda log(y) = log(A) + n*log(x).
+    # Esta función calcula la pendiente 'n', demostrando numéricamente si 
+    # algo es inversamente proporcional (n = -1) o lineal (n = 1).
     return np.polyfit(np.log(x), np.log(y), 1)[0]
 
 
@@ -204,6 +229,10 @@ def actividad_7():
     E_b = calcular_campo_superficie(Q_b, R_barrido)
     U_b = calcular_energia_esfera(C, V_fijo)
 
+    # - Con Q fija: Al aumentar el radio, la capacitancia (C) crece, por lo que el potencial (V=Q/C) cae.
+    # - Con V fijo: Para mantener el mismo voltaje en una esfera más grande (mayor C), 
+    #   la batería debe suministrar más carga (Q=C*V). 
+    # Las curvas se cruzan exactamente en R = 5 cm porque usamos el voltaje de esa esfera como referencia.
     print(f"\nActividad 7: potencial fijo V = {V_fijo:.2f} V "
           f"(el de la esfera de {R_esfera * 100:.0f} cm con Q = 1 nC)")
     print(f"{'R (cm)':>8} {'C (pF)':>10} {'Q (nC)':>10} {'V (V)':>10} "
@@ -340,7 +369,11 @@ def actividades_10_11_12():
     V_con = V_capacitor
     V_des = Q0 / Ck                                            # desconectada: Q fija
     U_des = calcular_energia_esfera(Ck, V_des)
-
+    # Al insertar el dieléctrico, sus moléculas se polarizan y crean un campo eléctrico interno 
+    # opuesto al original. Esto "debilita" el campo total.
+    # - Batería conectada (V fijo): La fuente bombea más carga para compensar esa caída de campo. (C y Q suben).
+    # - Batería desconectada (Q fija): La carga no tiene a dónde huir. Como el campo se debilita, 
+    #   el voltaje entre las placas cae irremediablemente. (C sube, V y U caen).
     print(f"\nActividad 12: dieléctrico κ = {kappa:g}")
     print("Predicción (tabla de clase): conectada -> C, Q, U × κ y V igual; "
           "desconectada -> C × κ, Q igual, V y U ÷ κ.")
@@ -379,6 +412,10 @@ def actividades_10_11_12():
 def grafica_convergencia_capacitor():
     """Muestra que el capacitor esférico tiende a la esfera aislada cuando b >> a."""
     a = R_esfera
+    # La fórmula del capacitor esférico es C = 4π·ε0·(a·b)/(b - a).
+    # Si alejamos la coraza exterior hacia el infinito (b → ∞), el término b/(b-a) tiende a 1.
+    # Por lo tanto, recuperamos la fórmula de la esfera aislada: C = 4π·ε0·a.
+    # Una esfera aislada es simplemente un capacitor donde la segunda placa está en el infinito.
     C_aislada = calcular_capacitancia_esfera(a)
     cociente = np.logspace(np.log10(1.2), 4, 200)  # b/a
     desviacion = (capacitancia_capacitor_esferico(a, a * cociente) - C_aislada) / C_aislada
@@ -415,9 +452,11 @@ def ejecutar_pruebas():
         <= TOL_CONSTANTES,
         diferencia_relativa(energia, 0.5 * Q * potencial) <= TOL_CONSTANTES,
     ))
-
+    # PRUEBA 2: Gradiente de Potencial (Verificación Independiente Principal)
     radio = R_esfera
     r = np.linspace(1.2 * radio, 3 * radio, 1001)
+    # FÍSICA: Se calcula la derivada numérica del potencial respecto al radio (dV/dr).
+    # Como E = -dV/dr, este resultado numérico debe ser casi idéntico al perfil de campo teórico.
     campo_derivado = -np.gradient(perfil_potencial(Q, radio, r), r)
     campo_modelo = perfil_campo(Q, radio, r)
     error_campo = np.max(
@@ -444,6 +483,10 @@ def ejecutar_pruebas():
     Q_con, U_con = calcular_estado_capacitor(C_dielec, V_capacitor)
     V_des = Q_vacio / C_dielec
     U_des = calcular_energia_esfera(C_dielec, V_des)
+
+    # PRUEBA 4: Comportamiento del Dieléctrico
+    # FÍSICA: Batería conectada (V fijo) -> C, Q y U aumentan por factor kappa.
+    # Batería desconectada (Q fija) -> C aumenta, pero V y U disminuyen por factor 1/kappa.
     resultados["capacitor: dieléctrico conectado/desconectado"] = all((
         np.isclose(C_dielec / C_vacio, kappa),
         np.isclose(Q_con / Q_vacio, kappa),
