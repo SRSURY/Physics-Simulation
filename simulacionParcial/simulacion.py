@@ -343,8 +343,7 @@ def actividad_9():
                  linewidth=0.7, alpha=0.5, label="Líneas de campo" if i == 0 else None)
     eje.add_patch(plt.Circle((0, 0), R_esfera * 100, color="silver", ec="black",
                              zorder=10, label="Esfera conductora"))
-    eje.set_title("Equipotenciales (círculos) y líneas de campo (radiales): "
-                  "siempre perpendiculares")
+    eje.set_title("Equipotenciales y líneas de campo")
     eje.set_xlabel("x (cm)")
     eje.set_ylabel("y (cm)")
     eje.set_aspect("equal")
