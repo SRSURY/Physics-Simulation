@@ -462,7 +462,7 @@ def ejecutar_pruebas():
         np.abs(campo_derivado[1:-1] - campo_modelo[1:-1]) / campo_modelo[1:-1]
     )
     resultados["perfiles: E = -dV/dr"] = error_campo < 2e-5
-
+    ## PRUEBA 3:
     trabajo, cambio_energia = calcular_trabajo_traslado(
         q0, Q, radio, radio, 2 * radio
     )
@@ -493,7 +493,7 @@ def ejecutar_pruebas():
         np.isclose(V_des / V_capacitor, 1 / kappa),
         np.isclose(U_des / U_vacio, 1 / kappa),
     ))
-
+    # PRUEBA 5: Comprobacion caso limite 
     C_aislada = calcular_capacitancia_esfera(a)
     b_sobre_a = np.array([10.0, 100.0, 1000.0])
     diferencia = (
