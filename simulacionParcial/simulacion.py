@@ -41,7 +41,7 @@ R_destacados = np.array([0.03, 0.05, 0.08])
 
 R_coraza_interna = 0.08 # Radio interior de la coraza externa (8 cm). 'a' es R_esfera.
 V_capacitor = 100.0 # Voltaje de la batería conectada al capacitor (100 V).
-kappa = 2.0 # Constante dieléctrica del material insertado (kappa o K).
+kappa = 2.0 # Constante dieléctrica del material insertado (kappa o K). k = 2
 
 # visualizacion grafica actividad 9
 
